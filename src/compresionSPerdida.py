@@ -44,15 +44,19 @@ def freemanChainCodeAlgorithm(row, col, img, size, p_pixel=None):
         # If the pixel is black
         if img[coord[0], coord[1]] == 0:
             if size == 4:
-                # If the pixel is not the previous pixel
-                if (coord[0], coord[1]) != p_pixel:
-                    # Return the chain code and the next pixel coordinates
-                    return coord[2], (coord[0], coord[1])
+                # If the pixel is a border pixel
+                if isBorderPixel(coord[0], coord[1], img, 8):
+                    # If the pixel is not the previous pixel
+                    if (coord[0], coord[1]) != p_pixel:
+                        # Return the chain code and the next pixel coordinates
+                        return coord[2], (coord[0], coord[1])
             elif size == 8:
-                # If the pixel is not in the previous pixels
-                if (coord[0], coord[1]) not in p_pixel:
-                    # Return the chain code and the next pixel coordinates
-                    return coord[2], (coord[0], coord[1])
+                # If the pixel is a border pixel
+                if isBorderPixel(coord[0], coord[1], img, 4):
+                    # If the pixel is not in the previous pixels
+                    if (coord[0], coord[1]) not in p_pixel:
+                        # Return the chain code and the next pixel coordinates
+                        return coord[2], (coord[0], coord[1])
 
 
 # Function to apply the freeman 4 chain code algorithm to a binary image
@@ -106,27 +110,24 @@ def freeman8ChainCode(img):
         chain.append(ret[0])
         p_pixels.append(n_pixel)
         n_pixel = ret[1]
+        # if n_pixel == (178, 244):
+        #     print("")
         if n_pixel == f_pixel:
             break
     return chain
 
-img = np.zeros((7, 7), dtype=np.uint8)
-for row, col in np.ndindex(img.shape):
-    img[row, col] = 255
-img[1, 1] = 0
-img[1, 2] = 0
-img[1, 3] = 0
-img[1, 4] = 0
-img[1, 5] = 0
-img[2, 1] = 0
-img[2, 5] = 0
-img[3, 1] = 0
-img[3, 4] = 0
-img[4, 1] = 0
-img[4, 3] = 0
-img[5, 1] = 0
-img[5, 2] = 0
-print(img)
-code_chain = freeman8ChainCode(img)
-for i in code_chain:
-    print(i, end=" ")
+if __name__ == "__main__":
+    # Read the image
+    imgpath = Path("img/15.png")
+    img = cv.imread(str(imgpath), cv.IMREAD_GRAYSCALE)
+    # Binarize the image
+    img = binarizar(img)
+    # Save the binarized image
+    # cv.imwrite("img/05_binarized.png", img)
+    # Apply the freeman chain code algorithm
+    # chain = freeman4ChainCode(img)
+    # for i in chain:
+    #     print(i)
+    chain = freeman8ChainCode(img)
+    for i in chain:
+        print(i, end="")
