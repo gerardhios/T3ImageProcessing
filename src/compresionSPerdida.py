@@ -36,17 +36,23 @@ def neighborhoodCoordinates(row, col, size, img_shape):
             coordinates.remove(coord)
     return coordinates
 
-def freemanChainCodeAlgorithm(row, col, img, size, p_pixel):
+def freemanChainCodeAlgorithm(row, col, img, size, p_pixel=None):
     # Get the coordinates of the neighborhood
     neighboors = neighborhoodCoordinates(row, col, size, img.shape)
     # Iterate over the neighborhood
     for coord in neighboors:
         # If the pixel is black
         if img[coord[0], coord[1]] == 0:
-            # If the pixel is not the previous pixel
-            if (coord[0], coord[1]) != p_pixel:
-                # Return the chain code and the next pixel coordinates
-                return coord[2], (coord[0], coord[1])
+            if size == 4:
+                # If the pixel is not the previous pixel
+                if (coord[0], coord[1]) != p_pixel:
+                    # Return the chain code and the next pixel coordinates
+                    return coord[2], (coord[0], coord[1])
+            elif size == 8:
+                # If the pixel is not in the previous pixels
+                if (coord[0], coord[1]) not in p_pixel:
+                    # Return the chain code and the next pixel coordinates
+                    return coord[2], (coord[0], coord[1])
 
 
 # Function to apply the freeman 4 chain code algorithm to a binary image
@@ -79,14 +85,29 @@ def freeman4ChainCode(img):
 # Function to apply the freeman 4 chain code algorithm to a binary image
 def freeman8ChainCode(img):
     chain = []
-    # Iterate over the image
+    p_pixels = []
+    n_pixel = f_pixel = None
+    # Iterate over the image find the first black pixel
     for row, col in np.ndindex(img.shape):
         # If the pixel is black
         if img[row, col] == 0:
             # If the pixel is a border pixel
             if isBorderPixel(row, col, img, 4):
-                # Apply the freeman 4 chain code algorithm
-                chain.append(freemanChainCodeAlgorithm(row, col, img, 8))
+                # Save the first pixel
+                f_pixel = (row, col)
+                # Apply the freeman 8 chain code algorithm
+                ret = freemanChainCodeAlgorithm(row, col, img, 8, p_pixels)
+                chain.append(ret[0])
+                # p_pixels.append(f_pixel)
+                n_pixel = ret[1]
+                break
+    while True:
+        ret = freemanChainCodeAlgorithm(n_pixel[0], n_pixel[1], img, 8, p_pixels)
+        chain.append(ret[0])
+        p_pixels.append(n_pixel)
+        n_pixel = ret[1]
+        if n_pixel == f_pixel:
+            break
     return chain
 
 img = np.zeros((7, 7), dtype=np.uint8)
@@ -100,15 +121,12 @@ img[1, 5] = 0
 img[2, 1] = 0
 img[2, 5] = 0
 img[3, 1] = 0
-img[3, 5] = 0
+img[3, 4] = 0
 img[4, 1] = 0
-img[4, 5] = 0
+img[4, 3] = 0
 img[5, 1] = 0
 img[5, 2] = 0
-img[5, 3] = 0
-img[5, 4] = 0
-img[5, 5] = 0
 print(img)
-code_chain = freeman4ChainCode(img)
+code_chain = freeman8ChainCode(img)
 for i in code_chain:
     print(i, end=" ")
