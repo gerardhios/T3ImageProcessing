@@ -101,8 +101,8 @@ def freeman8ChainCode(img):
         chain.append(ret[0])
         p_pixels.append(n_pixel)
         n_pixel = ret[1]
-        if n_pixel == (195, 147):
-            print("")
+        # if n_pixel == (195, 147):
+        #     print("")
         if n_pixel == f_pixel:
             break
     return chain
@@ -118,7 +118,7 @@ def freeman4ChainCode(img):
         # If the pixel is black
         if img[row, col][0] == 1:
             # Save the first pixel
-            print(img[row, col])
+            # print((row, col))
             y = row
             x = col
             break
@@ -137,6 +137,10 @@ def freeman4ChainCode(img):
                         # Down
                         chain.append(1)
     while True:
+        # if len(chain) > 3:
+        #     print("Last chain codes:", chain[-3:])
+        # if y == 256 and x == 188:
+        #     print("")
         if img[y][x+1][0] == 1:
             img[y][x+1][0] = 0
             x += 1
@@ -288,77 +292,63 @@ def freeman4ChainCode(img):
         chain.append(aux.pop(0))
     return chain
 
+def read_image(index):
+    if index < 10:
+            imgpath = Path(f"img/0{index}.png")
+    else:
+        imgpath = Path(f"img/{index}.png")
+    img = cv.imread(str(imgpath), cv.IMREAD_GRAYSCALE)
+    cv.imshow("Original", img)
+    return img
+
+def prepare_image(index):
+    img = read_image(index)
+    # Binarize the image
+    img_b = binarizar(img, 255, 0)
+    cv.imshow("Binarized image", img_b)
+    # Save the binarized image
+    # cv.imwrite("img/13_binarized.png", img_b)
+    img_b = binarizar(img, 0, 1)
+    # Apply the 3x3 dilatation
+    img_d = dilatation(img_b, 8)
+    img_d = dilatation(img_d, 8)
+    img_d = dilatation(img_d, 8)
+    # Apply the 3x3 erosion
+    img_e = erosion(img_d, 8)
+    # Obtain the border
+    img_og = img_e.copy()
+    img_e1 = erosion(img_e, 8)
+    img_e = erosion(img_e1, 8)
+    img_e = erosion(img_e, 8)
+    img_f = img_og - img_e
+    # Obtain a lighter border image
+    img_f4 = img_og - img_e1
+    img_f_v = img_f.copy()
+    for row, col in np.ndindex(img_f.shape):
+        if img_f_v[row, col] == 0:
+            img_f_v[row, col] = 255
+    cv.imshow("Border", img_f_v)
+    # Save the border image
+    # cv.imwrite(f"img/{index}_border.png", img_f_v)
+    return img_f, img_f4
+
 if __name__ == "__main__":
     # Read the image
-    # for i in range(1, 16):
-    #     if i < 10:
-    #         imgpath = Path(f"img/0{i}.png")
-    #     else:
-    #         imgpath = Path(f"img/{i}.png")
-    #     img = cv.imread(str(imgpath), cv.IMREAD_GRAYSCALE)
-    #     cv.imshow("Original", img)
-    #     # Binarize the image
-    #     img_b = binarizar(img, 255, 0)
-    #     cv.imshow("Binarized image", img_b)
-    #     # Save the binarized image
-    #     # cv.imwrite("img/13_binarized.png", img_b)
-    #     img_b = binarizar(img, 0, 1)
-    #     # Apply the 3x3 dilatation
-    #     img_d = dilatation(img_b, 8)
-    #     img_d = dilatation(img_d, 8)
-    #     img_d = dilatation(img_d, 8)
-    #     # Apply the 3x3 erosion
-    #     img_e = erosion(img_d, 8)
-    #     # Obtain the border
-    #     img_og = img_e.copy()
-    #     img_e = erosion(img_e, 8)
-    #     img_e = erosion(img_e, 8)
-    #     img_e = erosion(img_e, 8)
-    #     img_f = img_og - img_e
-    #     img_f_v = img_f.copy()
-    #     for row, col in np.ndindex(img_f.shape):
-    #         if img_f_v[row, col] == 0:
-    #             img_f_v[row, col] = 255
-    #     cv.imshow("Border", img_f_v)
-    #     # Save the border image
-    #     # cv.imwrite("img/13_border.png", img_f_v)
-    #     # Apply the freeman chain code algorithm
-    #     img_f4 = np.zeros((img_f.shape[0], img_f.shape[1], 2), dtype=np.uint8)
-    #     for row, col in np.ndindex(img_f.shape):
-    #         img_f4[row, col] = np.array([img_f[row, col], img_f[row, col]])
-    #     chain = freeman4ChainCode(img_f4)
-    #     for i in chain:
-    #         print(i, end="")
-    #     # chain = freeman8ChainCode(img_f)
-    #     # for i in chain:
-    #     #     print(i, end="")
-    #     cv.waitKey(0)
-    #     cv.destroyAllWindows()
-    img = np.full((9, 9, 2), 0, dtype=np.uint8)
-    img[1, 1] = np.array([1, 1])
-    img[1, 2] = np.array([1, 1])
-    img[1, 3] = np.array([1, 1])
-    img[1, 4] = np.array([1, 1])
-    img[1, 5] = np.array([1, 1])
-    img[1, 6] = np.array([1, 1])
-    img[1, 7] = np.array([1, 1])
-    img[2, 1] = np.array([1, 1])
-    img[2, 7] = np.array([1, 1])
-    img[3, 1] = np.array([1, 1])
-    img[3, 7] = np.array([1, 1])
-    img[4, 1] = np.array([1, 1])
-    img[4, 7] = np.array([1, 1])
-    img[5, 1] = np.array([1, 1])
-    img[5, 7] = np.array([1, 1])
-    img[6, 1] = np.array([1, 1])
-    img[6, 7] = np.array([1, 1])
-    img[7, 1] = np.array([1, 1])
-    img[7, 2] = np.array([1, 1])
-    img[7, 3] = np.array([1, 1])
-    img[7, 4] = np.array([1, 1])
-    img[7, 5] = np.array([1, 1])
-    img[7, 6] = np.array([1, 1])
-    img[7, 7] = np.array([1, 1])
-    chain = freeman4ChainCode(img)
-    for i in chain:
-        print(i, end="")
+    for i in range(1, 16):
+        img_f, imgf4 = prepare_image(i)
+
+        # Create a image for the f4 chain code with the original image size
+        img_f4 = np.zeros((imgf4.shape[0], imgf4.shape[1], 2), dtype=np.uint8)
+        for row, col in np.ndindex(img_f.shape):
+            img_f4[row, col] = np.array([imgf4[row, col], imgf4[row, col]])
+
+        # Apply the freeman 4 chain code algorithm
+        chc_f4 = freeman4ChainCode(img_f4)
+        # print(f"Freeman 4 chain code: {chc_f4}")
+        print(len(chc_f4))
+        # Apply the freeman 8 chain code algorithm
+        chc_f8 = freeman8ChainCode(img_f)
+        # print(f"Freeman 8 chain code: {chc_f8}")
+        print(len(chc_f8))
+        # cv.waitKey(0)
+        # cv.destroyAllWindows()
