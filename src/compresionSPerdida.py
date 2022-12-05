@@ -1,6 +1,7 @@
 from pathlib import Path
 import cv2 as cv
 import numpy as np
+import os
 
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 #@TODO: Cambiar las direcciones del F4 y probarlo con una imagen                      @
@@ -292,6 +293,50 @@ def freeman4ChainCode(img):
         chain.append(aux.pop(0))
     return chain
 
+def VCC(f4_chain):
+    vcc = []
+    convertion = [[1  ,2  ,"*",0  ],
+                  [0  ,1  ,2  ,"*"],
+                  ["*",0  ,1  ,2  ],
+                  [2  ,"*",0  ,1  ]]
+    
+    for i in range(len(f4_chain) - 1):
+        vcc.append(convertion[f4_chain[i]][f4_chain[i+1]])
+    return vcc
+
+def c3OT(f4_chain):
+    c3ot = []
+    aux = 1
+    convertion = [[1  ,"*",2  ,"*"],
+                  ["*",1  ,"*",2  ],
+                  [2  ,"*",1  ,"*"],
+                  ["*",2  ,"*",1  ]]
+    
+    for i in range(len(f4_chain) - 1):
+        if f4_chain[i] == f4_chain[i+1]:
+            c3ot.append(0)
+        else:
+            c3ot.append(convertion[aux][f4_chain[i+1]])
+            aux = f4_chain[i]
+    c3ot.append(1)
+    return c3ot
+
+def cAF8(f8_chain):
+    af8 = []
+    convertion = [[0,1,3,5,7,6,4,2],
+                  [2,0,1,3,5,7,6,4],
+                  [4,2,0,1,3,5,7,6],
+                  [6,4,2,0,1,3,5,7],
+                  [7,6,4,2,0,1,3,5],
+                  [5,7,6,4,2,0,1,3],
+                  [3,5,7,6,4,2,0,1],
+                  [1,3,5,7,6,4,2,0]]
+
+    for i in range(len(f8_chain) - 1):
+        af8.append(convertion[f8_chain[i]][f8_chain[i+1]])
+    af8.append(2)
+    return af8
+
 def read_image(index):
     if index < 10:
             imgpath = Path(f"img/0{index}.png")
@@ -299,10 +344,10 @@ def read_image(index):
         imgpath = Path(f"img/{index}.png")
     img = cv.imread(str(imgpath), cv.IMREAD_GRAYSCALE)
     cv.imshow("Original", img)
-    return img
+    return img, imgpath
 
 def prepare_image(index):
-    img = read_image(index)
+    img, imgpath = read_image(index)
     # Binarize the image
     img_b = binarizar(img, 255, 0)
     cv.imshow("Binarized image", img_b)
@@ -330,13 +375,119 @@ def prepare_image(index):
     cv.imshow("Border", img_f_v)
     # Save the border image
     # cv.imwrite(f"img/{index}_border.png", img_f_v)
-    return img_f, img_f4
+    return img_f, img_f4, imgpath
+
+def calculate_entropy(n_chars, chain):
+    frecuency_lst = []
+    for i in range(n_chars):
+        frecuency_lst.append(chain.count(i))
+    entropy = 0
+    for i in range(n_chars):
+        if frecuency_lst[i] != 0:
+            entropy += (-(((frecuency_lst[i]) / len(chain)) * (np.log2(frecuency_lst[i] / len(chain))))) + entropy
+    return entropy
+
+def assign_code(nodes, label, result, prefix=''):
+    childs = nodes[label]
+    tree = {}
+    if len(childs) == 2:
+        tree['0'] = assign_code(nodes, childs[0], result, prefix + '0')
+        tree['1'] = assign_code(nodes, childs[1], result, prefix + '1')
+        return tree
+    else:
+        result[label] = prefix
+        return label
+
+def huffman_code(_vals):
+    vals = _vals.copy()
+    nodes = {}
+    for n in vals.keys():  # leafs initialization
+        nodes[n] = []
+
+    while len(vals) > 1:  # binary tree creation
+        s_vals = sorted(vals.items(), key=lambda x: x[1])
+        a1 = s_vals[0][0]
+        a2 = s_vals[1][0]
+        vals[a1 + a2] = vals.pop(a1) + vals.pop(a2)
+        nodes[a1 + a2] = [a1, a2]
+    code = {}
+    root = a1 + a2
+    tree = {}
+    tree = assign_code(nodes, root, code)
+    return code, tree
+
+def probability_dict(n_chars, chain):
+    frecuency_lst = []
+    for i in range(n_chars):
+        frecuency_lst.append(chain.count(i))
+    prob_lst = []
+    for i in range(n_chars):
+        prob_lst.append((frecuency_lst[i] / len(chain), str(i)))
+    dic = {c: p for p, c in prob_lst}
+    return dic, frecuency_lst
+
+def huffman_entropy_codification(n_chars, chain):
+    dic, fr_lst = probability_dict(n_chars, chain)
+    code, tree = huffman_code(dic)
+    cod = []
+    huff = ""
+    prom = 0
+    for i in range(n_chars):
+        cod.append(code[str(i)])
+    
+    for i in range(len(cod)):
+        print(f"{i} -> {cod[i]}")
+        prom += (fr_lst[i] / len(chain)) * len(cod[i])
+    
+    for i in range(len(chain)):
+        huff += cod[chain[i]]
+    
+    return huff, prom
+
+def encoder(singal, singal_dict):
+    Low = 0
+    High = 1
+    for s in singal:
+        CodeRange = High - Low
+        High = Low + CodeRange * singal_dict[s][1]
+        Low = Low + CodeRange * singal_dict[s][0]
+    med=(High+Low)/2
+    return med
+
+def decoder(encoded_number, singal_dict, singal_length):
+    singal = []
+    while singal_length:
+        for k, v in singal_dict.items():
+            if v[0] <= encoded_number < v[1]:
+                singal.append(k)
+                range = v[1] - v[0]
+                encoded_number -= v[0]
+                encoded_number /= range
+                break
+        singal_length -= 1
+    return singal
+
+def aritmetic_codification(n_chars, chain):
+    dic, fr_lst = probability_dict(n_chars, chain)
+    ini = fin = 0
+    signal = ""
+    singal_dict = {}
+    for i in range(len(fr_lst)):
+        fin+=fr_lst[i]/len(chain)
+        singal_dict[str(i)] = (ini,fin)
+        ini=fin
+    print(singal_dict)
+    for i in chain:
+        signal += str(i)
+    arit_code = encoder(signal, singal_dict)
+    decoded_chain = decoder(arit_code, singal_dict)
+    return arit_code, decoded_chain
 
 if __name__ == "__main__":
     # Read the image
     for i in range(1, 16):
-        img_f, imgf4 = prepare_image(i)
-
+        img_f, imgf4, imgpath = prepare_image(i)
+        imgbytes = os.path.getsize(imgpath)
         # Create a image for the f4 chain code with the original image size
         img_f4 = np.zeros((imgf4.shape[0], imgf4.shape[1], 2), dtype=np.uint8)
         for row, col in np.ndindex(img_f.shape):
@@ -345,10 +496,22 @@ if __name__ == "__main__":
         # Apply the freeman 4 chain code algorithm
         chc_f4 = freeman4ChainCode(img_f4)
         # print(f"Freeman 4 chain code: {chc_f4}")
-        print(len(chc_f4))
+        print(f"Freeman 4 chain code length: {len(chc_f4)}")
+        print(f"Freeman 4 chain code entropy H = {calculate_entropy(4, chc_f4)}")
+        huff_f4, prom = huffman_entropy_codification(4, chc_f4)
+        print(f"Huffman entropy codification: {huff_f4}")
+        print(f"Total bits: {len(huff_f4)}")
+        print(f"Bits per pixel: {prom}")
+        a_c_f4, d_c_f4 = aritmetic_codification(4, chc_f4)
+        print(f"Aritmetic codification: {a_c_f4}")
+        print(f"Decoded chain: {d_c_f4}")
+        huff4bytes = len(huff_f4) / 8
+        print("Compression ratio: {:0.2f}".format((1-(huff4bytes/imgbytes))*100))
         # Apply the freeman 8 chain code algorithm
-        chc_f8 = freeman8ChainCode(img_f)
+        # chc_f8 = freeman8ChainCode(img_f)
         # print(f"Freeman 8 chain code: {chc_f8}")
-        print(len(chc_f8))
+        # print(f"Freeman 8 chain code length: {len(chc_f8)}")
+        # print(f"Freeman 8 chain code entropy H = {calculate_entropy(8, chc_f8)}")
+        # f8_prob = probability_dict(8, chc_f8)
         # cv.waitKey(0)
         # cv.destroyAllWindows()
