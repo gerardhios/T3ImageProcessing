@@ -480,11 +480,37 @@ def aritmetic_codification(n_chars, chain):
     for i in chain:
         signal += str(i)
     arit_code = encoder(signal, singal_dict)
-    decoded_chain = decoder(arit_code, singal_dict)
+    decoded_chain = decoder(arit_code, singal_dict, len(signal))
     return arit_code, decoded_chain
 
+def print_stuff(chain, n_chars, chcode, imgbytes):
+    print(f"{chcode} chain code: {chain}")
+    print(f"{chcode} chain code length: {len(chain)}")
+    print(f"{chcode} chain code entropy H = {calculate_entropy(n_chars, chain)}")
+    huff, prom = huffman_entropy_codification(n_chars, chain)
+    print(f"Huffman entropy codification: {huff}")
+    print(f"Total bits: {len(huff)}")
+    print(f"Bits per pixel: {prom}")
+    a_c, d_c = aritmetic_codification(n_chars, chain)
+    print(f"Aritmetic codification: {a_c}")
+    print(f"Decoded chain: {d_c}")
+    huffbytes = len(huff) / 8
+    print("Compression ratio: {:0.2f}".format((1-(huffbytes/imgbytes))*100))
+
+def print_ch(chain):
+    for i in range(len(chain)):
+        print(chain[i], end="")
+    print()
+
+def save_chain(chain, fo_name, imgindex):
+    path = Path(f'chain_codes/{fo_name}/{imgindex}.txt')
+    # Save the chain code in a txt file
+    with open(str(path), 'w') as f:
+        for i in range(len(chain)):
+            f.write(str(chain[i]))
+
 if __name__ == "__main__":
-    # Read the image
+    # Read the images
     for i in range(1, 16):
         img_f, imgf4, imgpath = prepare_image(i)
         imgbytes = os.path.getsize(imgpath)
@@ -492,26 +518,29 @@ if __name__ == "__main__":
         img_f4 = np.zeros((imgf4.shape[0], imgf4.shape[1], 2), dtype=np.uint8)
         for row, col in np.ndindex(img_f.shape):
             img_f4[row, col] = np.array([imgf4[row, col], imgf4[row, col]])
-
         # Apply the freeman 4 chain code algorithm
         chc_f4 = freeman4ChainCode(img_f4)
-        # print(f"Freeman 4 chain code: {chc_f4}")
-        print(f"Freeman 4 chain code length: {len(chc_f4)}")
-        print(f"Freeman 4 chain code entropy H = {calculate_entropy(4, chc_f4)}")
-        huff_f4, prom = huffman_entropy_codification(4, chc_f4)
-        print(f"Huffman entropy codification: {huff_f4}")
-        print(f"Total bits: {len(huff_f4)}")
-        print(f"Bits per pixel: {prom}")
-        a_c_f4, d_c_f4 = aritmetic_codification(4, chc_f4)
-        print(f"Aritmetic codification: {a_c_f4}")
-        print(f"Decoded chain: {d_c_f4}")
-        huff4bytes = len(huff_f4) / 8
-        print("Compression ratio: {:0.2f}".format((1-(huff4bytes/imgbytes))*100))
+        save_chain(chc_f4, "F4", i)
+        print_stuff(chc_f4, 4, "F4", imgbytes)
+        # VCC
+        vcc = VCC(chc_f4)
+        save_chain(vcc, "VCC", i)
+        print_stuff(vcc, 3, "VCC", imgbytes)
+
+        # 3OT
+        c3ot = c3OT(chc_f4)
+        save_chain(c3ot, "3OT", i)
+        print_stuff(c3ot, 3, "3OT", imgbytes)
+
         # Apply the freeman 8 chain code algorithm
-        # chc_f8 = freeman8ChainCode(img_f)
-        # print(f"Freeman 8 chain code: {chc_f8}")
-        # print(f"Freeman 8 chain code length: {len(chc_f8)}")
-        # print(f"Freeman 8 chain code entropy H = {calculate_entropy(8, chc_f8)}")
-        # f8_prob = probability_dict(8, chc_f8)
-        # cv.waitKey(0)
-        # cv.destroyAllWindows()
+        chc_f8 = freeman8ChainCode(img_f)
+        save_chain(chc_f8, "F8", i)
+        print_stuff(chc_f8, 8, "F8", imgbytes)
+
+        # AF8
+        af8 = cAF8(chc_f8)
+        save_chain(af8, "AF8", i)
+        print_stuff(af8, 8, "AF8", imgbytes)
+
+        cv.waitKey(0)
+        cv.destroyAllWindows()
